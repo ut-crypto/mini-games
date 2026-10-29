@@ -6,6 +6,7 @@
 |---|---|---|
 | Hit & Blow 5 | 重複なし5桁の数字を当てる推理ゲーム(ひとりで練習 / オンライン対戦) | `/hit-and-blow/` |
 | 将棋 | CPU 対戦(5段階)/ オンライン対戦 / ふたりで対局、形勢バー付き | `/shogi/` |
+| 将棋 AI 対戦場 | 色々な AI が作った将棋ボットを持ち込んで総当たり戦 | `/shogi/arena/` |
 
 ## 構成
 
@@ -67,3 +68,15 @@ shared/vendor/      PeerJS 1.5.4(MIT)
 - 評価関数 水匠5 / SuishoPetite: たややん氏(上記 npm パッケージに同梱されたもの)
 - KomoringHeights: GPLv3。ソースコード: <https://github.com/komori-n/KomoringHeights>([@mizarjp/yaneuraou.komoringheights-mate](https://www.npmjs.com/package/@mizarjp/yaneuraou.komoringheights-mate) 0.5.0-kh.14 のビルドを同梱)
 - PeerJS: MIT
+
+## 将棋 AI 対戦場(`/shogi/arena/`)
+
+AI(Claude・ChatGPT・Gemini など)に書かせた将棋ボットを持ち込んで戦わせるページ。
+
+- **ボットの仕様**: [`shogi/arena/BOT_SPEC.md`](shogi/arena/BOT_SPEC.md)。この仕様書を AI に渡して「この仕様で将棋ボットを書いて」と頼むと、そのまま使える `.js` ファイルが作れる(ページ上の「仕様書をコピー」からも取れる)
+- **持ち込み方(2通り)**
+  - `shogi/arena/bots/` にファイルを置いて push する → 公開サイトに常設。ページは GitHub API でフォルダの中身を読むので、置くだけで一覧に出る(API が使えないときは `bots/index.json` を使う。これは GitHub Actions `.github/workflows/arena-bots.yml` が自動更新、手元では `node tools/build-bot-manifest.mjs`)
+  - ページの枠にファイルをドロップ → そのブラウザの中だけで使える(ブラウザに保存される)
+- **安全対策**: ボットは Web Worker の中で動くので画面やページのデータに触れない。持ち時間+0.5秒を超えたら強制終了して負け。反則手・例外も負け。読み込み時に初手を指せるか確認する
+- **内蔵 CPU**(簡単〜極)も参加できる(相手の手番中の先読みは切って条件を揃える)
+- 同梱のサンプル: `random.js`(テンプレート)、`claude-greedy.js`・`claude-alphabeta.js`(Claude 作)

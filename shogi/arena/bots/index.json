@@ -1,0 +1,7 @@
+{
+  "bots": [
+    "claude-alphabeta.js",
+    "claude-greedy.js",
+    "random.js"
+  ]
+}

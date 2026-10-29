@@ -341,3 +341,16 @@ button.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red)
   .hand-piece { width: 34px; height: 38px; }
   .hand-piece .piece-face { width: 31px; font-size: 1rem; }
 }
+
+a.button-link {
+  display: block;
+  text-align: center;
+  padding: 11px 18px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: var(--panel-2);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+a.button-link:hover { border-color: var(--amber); }

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 対戦場 | 将棋 | Mini Games</title>
+  <meta name="theme-color" content="#0b0d10">
+  <script src="../coi.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Zen+Kaku+Gothic+New:wght@400;700&family=Shippori+Mincho+B1:wght@700&display=swap" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="../../shared/theme.css">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="arena.css">
+  <script src="../shogi-core.js" defer></script>
+  <script src="../engine.js" defer></script>
+  <script src="arena.js" defer></script>
+</head>
+<body>
+  <main id="app">
+    <a class="back-link" href="../">← 将棋</a>
+    <header class="masthead">
+      <h1 class="brand"><span class="brand-hit">AI</span><span class="amp"> </span><span class="brand-blow">対戦場</span></h1>
+      <p class="tagline"><span class="led"></span>SHOGI BOT ARENA</p>
+    </header>
+    <p class="lead">色々な AI が作った将棋ボットを持ち込んで戦わせる場所</p>
+
+    <div class="arena-grid">
+      <!-- 左: 参加者と設定 -->
+      <div class="arena-left">
+        <div class="card">
+          <h2><span class="num">01</span>参加者</h2>
+          <p class="note">戦わせたいボットにチェックを入れてください。2つ以上選ぶと総当たり戦になります。</p>
+          <ul id="participants" class="participants"></ul>
+
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="ボットのファイルを追加">
+            <div class="dz-title">ボットの <code>.js</code> ファイルをここにドロップ</div>
+            <div class="dz-sub">またはクリックして選択(このブラウザの中だけで使えます)</div>
+            <input id="file-input" type="file" accept=".js,text/javascript" multiple hidden>
+          </div>
+          <p id="repo-status" class="status"></p>
+        </div>
+
+        <div class="card">
+          <h2><span class="num">02</span>対局設定</h2>
+          <div class="option-row">
+            <span class="option-label">1手の持ち時間</span>
+            <div class="seg" id="time-seg">
+              <button data-v="500">0.5秒</button>
+              <button data-v="1000" class="on">1秒</button>
+              <button data-v="3000">3秒</button>
+              <button data-v="5000">5秒</button>
+            </div>
+          </div>
+          <div class="option-row">
+            <span class="option-label">1組あたりの対局数</span>
+            <div class="seg" id="games-seg">
+              <button data-v="1">1</button>
+              <button data-v="2" class="on">2</button>
+              <button data-v="4">4</button>
+              <button data-v="10">10</button>
+            </div>
+          </div>
+          <div class="option-row">
+            <span class="option-label">観戦スピード</span>
+            <div class="seg" id="speed-seg">
+              <button data-v="0">速い</button>
+              <button data-v="300" class="on">普通</button>
+              <button data-v="1000">ゆっくり</button>
+            </div>
+          </div>
+          <p class="note">先手・後手は1局ごとに入れ替えます。持ち時間を超えた手・反則手・エラーは負けになります。</p>
+          <div class="row">
+            <button id="btn-start" class="primary wide">対局開始</button>
+            <button id="btn-stop" class="ghost hidden">中止</button>
+          </div>
+          <p id="arena-status" class="status"></p>
+        </div>
+
+        <details class="card rules" id="spec-card">
+          <summary>ボットの作り方(AI に渡す仕様書)</summary>
+          <p class="note">下の仕様書を Claude・ChatGPT・Gemini などに渡して「この仕様で将棋ボットを書いて」と頼むと、そのまま持ち込めるファイルが作れます。</p>
+          <button id="btn-copy-spec" class="small">仕様書をコピー</button>
+          <pre id="spec-text" class="spec-text">読み込み中…</pre>
+        </details>
+      </div>
+
+      <!-- 右: 観戦と成績 -->
+      <div class="arena-right">
+        <div class="card live">
+          <div class="live-head">
+            <div class="vs"><span id="name-black" class="side black">▲ —</span><span class="vs-mark">vs</span><span id="name-white" class="side white">△ —</span></div>
+            <div id="live-status" class="live-status">対局待ち</div>
+          </div>
+          <div class="hand hand-top" id="hand-top"></div>
+          <div class="board-wrap">
+            <div class="files" id="files"></div>
+            <div class="board-row">
+              <div class="board" id="board"></div>
+              <div class="ranks" id="ranks"></div>
+            </div>
+          </div>
+          <div class="hand hand-bottom" id="hand-bottom"></div>
+          <ol id="kifu" class="kifu live-kifu"></ol>
+        </div>
+
+        <div class="card">
+          <h2><span class="num">03</span>成績</h2>
+          <div class="table-wrap">
+            <table class="standings">
+              <thead><tr><th>#</th><th>ボット</th><th>勝</th><th>負</th><th>分</th><th>勝ち点</th><th>勝率</th></tr></thead>
+              <tbody id="standings"></tbody>
+            </table>
+          </div>
+          <h3 class="log-title">対局結果</h3>
+          <ol id="game-log" class="game-log"></ol>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

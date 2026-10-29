@@ -14,7 +14,9 @@
     storage.set();
     location.reload();
   };
-  navigator.serviceWorker.register('coi-sw.js').then((reg) => {
+  // このスクリプトと同じフォルダの coi-sw.js を登録する(サブフォルダのページからも使えるように)
+  const swUrl = new URL('coi-sw.js', document.currentScript.src);
+  navigator.serviceWorker.register(swUrl.href).then((reg) => {
     if (navigator.serviceWorker.controller) reload();
     else navigator.serviceWorker.addEventListener('controllerchange', reload);
     if (reg.active && !navigator.serviceWorker.controller) reload();

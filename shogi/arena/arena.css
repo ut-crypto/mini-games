@@ -1,0 +1,109 @@
+/* AI 対戦場(共通: ../../shared/theme.css、盤と駒: ../style.css) */
+
+#app { max-width: 1180px; }
+.brand .brand-blow { font-family: var(--font-body); font-weight: 700; letter-spacing: 0.02em; }
+
+.arena-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
+.arena-left, .arena-right { min-width: 0; }
+
+.row { display: flex; gap: 8px; }
+.row .wide { flex: 1; }
+
+/* 参加者 */
+.participants { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 6px; }
+.participant {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.participant.selected { border-color: var(--amber-dim); background: rgba(255, 181, 71, 0.06); }
+.participant.error { border-color: rgba(255, 93, 93, 0.4); }
+.participant input { width: 18px; height: 18px; accent-color: var(--amber); }
+.p-name { font-weight: 700; }
+.p-meta { font-size: 0.78rem; color: var(--muted); }
+.p-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.p-err { font-size: 0.78rem; color: var(--red); margin-top: 2px; word-break: break-all; }
+.badge-src {
+  font-size: 0.68rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0 6px;
+  margin-left: 6px;
+  color: var(--muted);
+  vertical-align: 1px;
+}
+.badge-src.cpu { color: var(--amber); border-color: var(--amber-dim); }
+.badge-src.repo { color: var(--cyan); border-color: var(--cyan-dim); }
+.badge-src.local { color: var(--ultra); border-color: rgba(199, 125, 255, 0.4); }
+.p-side { display: flex; align-items: center; gap: 6px; }
+.p-state { font-family: var(--font-dot); font-size: 0.72rem; color: var(--muted); }
+.p-state.ok { color: var(--green); }
+.p-state.ng { color: var(--red); }
+.p-remove { padding: 2px 8px; font-size: 0.75rem; }
+
+.dropzone {
+  border: 2px dashed var(--rule-strong);
+  border-radius: 4px;
+  padding: 18px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover, .dropzone:focus-visible, .dropzone.over { border-color: var(--ultra); background: rgba(199, 125, 255, 0.07); outline: none; }
+.dz-title { font-weight: 700; }
+.dz-title code { font-family: var(--font-dot); color: var(--ultra); }
+.dz-sub { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+.spec-text {
+  white-space: pre-wrap;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  max-height: 360px;
+  overflow: auto;
+  background: var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin: 10px 0 0;
+}
+
+/* 観戦 */
+.live .board-wrap { margin: 0; }
+.live-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 10px; }
+.vs { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-weight: 700; }
+.vs .side.black { color: var(--sente); }
+.vs .side.white { color: var(--gote); }
+.vs .side.thinking { text-shadow: 0 0 10px currentColor; }
+.vs .side.thinking::after { content: " …"; animation: blink 1s steps(1) infinite; }
+.vs-mark { font-family: var(--font-dot); color: var(--muted); font-size: 0.8rem; }
+.live-status { font-size: 0.8rem; color: var(--muted); font-family: var(--font-dot); }
+.live .cell { cursor: default; }
+.live-kifu { max-height: 120px; margin-top: 10px; border-top: 1px solid var(--rule); padding-top: 6px; }
+
+/* 成績 */
+.table-wrap { overflow-x: auto; }
+.standings { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.standings th, .standings td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: right; white-space: nowrap; }
+.standings th { color: var(--muted); font-weight: normal; font-size: 0.75rem; }
+.standings td:nth-child(2), .standings th:nth-child(2) { text-align: left; white-space: normal; }
+.standings tr.top td { color: var(--amber); }
+.standings .empty { text-align: center; color: #4f4c45; }
+.log-title { font-size: 0.8rem; letter-spacing: 0.12em; color: var(--muted); margin: 16px 0 6px; }
+.game-log { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; font-size: 0.85rem; }
+.game-log li { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px dashed var(--rule); }
+.game-log .g-no { font-family: var(--font-dot); color: var(--muted); font-size: 0.72rem; min-width: 2.2em; }
+.game-log .g-text { flex: 1; }
+.game-log .g-text .black { color: var(--sente); }
+.game-log .g-text .white { color: var(--gote); }
+.game-log .g-reason { color: var(--muted); font-size: 0.78rem; }
+.game-log button { padding: 2px 8px; font-size: 0.72rem; }
+.game-log .empty { color: #4f4c45; justify-content: center; }
+
+@media (max-width: 900px) {
+  .arena-grid { grid-template-columns: 1fr; }
+}

@@ -8,6 +8,8 @@
  *   形勢バー            : K-P 版を別インスタンスで動かして評価
  */
 const ShogiEngine = (() => {
+  // エンジンのファイルはこのスクリプト(shogi/engine.js)からの相対パスで探す(サブフォルダのページからも使えるように)
+  const SCRIPT_BASE = new URL('.', (document.currentScript && document.currentScript.src) || location.href);
   const ENGINES = {
     'k-p': { script: 'engine/yaneuraou.k-p.js', global: 'YaneuraOu_K_P', wasm: 'engine/yaneuraou.k-p.wasm.gz', initialMB: 88 },
     halfkp: { script: 'engine/yaneuraou.halfkp.js', global: 'YaneuraOu_HalfKP', wasm: 'engine/yaneuraou.halfkp.wasm.gz', initialMB: 160 },
@@ -83,7 +85,7 @@ const ShogiEngine = (() => {
       note: '有段者向け。1手1秒しっかり読む',
       engine: 'k-p',
       multiPV: 1,
-      go: () => byoyomi(1000),
+      go: (ms) => byoyomi(Math.min(1000, ms)),
       temperature: 0,
       minDelay: 0,
     },
@@ -148,10 +150,10 @@ const ShogiEngine = (() => {
   }
 
   /** エンジンを読み込む。instanceKey が違えば同じ種類でも別インスタンス(同時に探索できる) */
-  function loadModule(kind, onProgress, instanceKey = kind) {
+  function loadModule(kind, onProgress, instanceKey = kind, capMB = null) {
     if (instances[instanceKey]) return instances[instanceKey];
     const def = ENGINES[kind];
-    const base = new URL('.', location.href);
+    const base = SCRIPT_BASE;
     const promise = (async () => {
       if (!window.crossOriginIsolated) {
         throw new Error('このブラウザでは CPU を利用できません(SharedArrayBuffer が無効です)。ページを再読み込みするか、Chrome / Edge / Firefox の最新版でお試しください');
@@ -170,7 +172,7 @@ const ShogiEngine = (() => {
         const initialPages = def.initialMB * 16;
         const wasmMemory = new WebAssembly.Memory({
           initial: initialPages,
-          maximum: Math.min(65536, Math.max(initialPages, MEM.maxMB(kind) * 16)),
+          maximum: Math.min(65536, Math.max(initialPages, (capMB || MEM.maxMB(kind)) * 16)),
           shared: true,
         });
         return window[def.global]({
@@ -279,7 +281,7 @@ const ShogiEngine = (() => {
   async function loadBook(engine) {
     if (engine.bookLoaded) return;
     if (!bookText) {
-      const res = await fetch(new URL(BOOK_URL, location.href));
+      const res = await fetch(new URL(BOOK_URL, SCRIPT_BASE));
       if (!res.ok) throw new Error('定跡ファイルを読み込めませんでした');
       bookText = await res.text();
     }
@@ -294,8 +296,8 @@ const ShogiEngine = (() => {
       this.running = null;
     }
 
-    static async create() {
-      const engine = await loadModule('kh');
+    static async create(instanceKey = 'kh') {
+      const engine = await loadModule('kh', null, instanceKey);
       engine.setOptions({ USI_Hash: MEM.hash('kh'), Threads: 1, PvInterval: 0, RootIsAndNodeIfChecked: false });
       await engine.request('isready', 'readyok');
       return new MateSolver(engine);
@@ -323,11 +325,18 @@ const ShogiEngine = (() => {
   }
 
   class CpuPlayer {
-    constructor(levelKey, { maxTimeMs = 5000, onInfo } = {}) {
+    /**
+     * opts.instanceKey: エンジンのインスタンス名(CPU 同士を対局させるときは別々にする)
+     * opts.noPonder / opts.threads / opts.hashMB: AI 対戦場向けの上書き
+     */
+    constructor(levelKey, { maxTimeMs = 5000, onInfo, instanceKey = null, noPonder = false, threads = null, hashMB = null } = {}) {
       this.levelKey = levelKey;
       this.level = LEVELS[levelKey];
       this.maxTimeMs = maxTimeMs;
       this.onInfo = onInfo;
+      this.instanceKey = instanceKey;
+      this.noPonder = noPonder;
+      this.overrides = { threads, hashMB };
       this.engine = null;
       this.mate = null;
       this.ponder = null; // { usiPosition, move, done: Promise<bestmove line> }
@@ -336,7 +345,10 @@ const ShogiEngine = (() => {
 
     async init(onProgress) {
       const lv = this.level;
-      this.engine = await loadModule(lv.engine, onProgress);
+      const { threads, hashMB } = this.overrides;
+      const key = this.instanceKey ? `${lv.engine}:${this.instanceKey}` : lv.engine;
+      const cap = lv.engine === 'halfkp' && hashMB ? 240 + (threads || MEM.threads(1)) * 64 + hashMB + 64 : null;
+      this.engine = await loadModule(lv.engine, onProgress, key, cap);
       const e = this.engine;
       const common = {
         EnteringKingRule: 'NoEnteringKing',
@@ -365,10 +377,13 @@ const ShogiEngine = (() => {
           ConsiderBookMoveCount: false,
         };
       }
+      if (threads) strength.Threads = threads;
+      if (hashMB) strength.USI_Hash = hashMB;
+      if (this.noPonder) strength.USI_Ponder = false;
       e.setOptions({ ...common, ...strength, ...book });
       await e.request('isready', 'readyok');
       e.send('usinewgame');
-      if (lv.mateSolver && !this.mate) this.mate = await MateSolver.create();
+      if (lv.mateSolver && !this.mate) this.mate = await MateSolver.create(this.instanceKey ? `kh:${this.instanceKey}` : 'kh');
     }
 
     /** 先読み中の探索を止める */
@@ -490,7 +505,7 @@ const ShogiEngine = (() => {
 
     /** CPU が指した後、相手の予想手の局面で先読みを始める */
     startPonder(game, ponderMove) {
-      if (!this.level.ponder || !ponderMove || game.result) return;
+      if (!this.level.ponder || this.noPonder || !ponderMove || game.result) return;
       if (!game.pos.findMove(ponderMove)) return;
       const position = `${game.usiPosition()}${game.ply ? '' : ' moves'} ${ponderMove}`;
       const e = this.engine;
@@ -610,5 +625,5 @@ const ShogiEngine = (() => {
     }
   }
 
-  return { LEVELS, CpuPlayer, Evaluator, MateSolver, loadModule, parseInfo };
+  return { LEVELS, CpuPlayer, Evaluator, MateSolver, loadModule, parseInfo, MEM };
 })();
