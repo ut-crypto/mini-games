@@ -32,12 +32,25 @@ importScripts('../shogi-core.js');
 
   const PIECE = (pc) => (pc ? `${pc.p ? '+' : ''}${pc.c === Core.BLACK ? pc.t : pc.t.toLowerCase()}` : null);
 
-  /** ボットに渡す局面情報 */
-  function buildState(msg) {
-    const game = new Core.Game(msg.startSfen);
-    for (const u of msg.history) {
-      if (!game.playUsi(u)) throw new Error(`内部エラー: 棋譜を再現できません (${u})`);
+  // 前回の局面を覚えておき、増えた手だけを指して局面を更新する(長い対局でも速い)
+  let cached = null;
+  function gameFor(startSfen, history) {
+    const ok = cached && cached.startSfen === startSfen && cached.history.length <= history.length
+      && cached.history.every((u, i) => u === history[i]);
+    if (!ok) cached = { startSfen, history: [], game: new Core.Game(startSfen) };
+    for (let i = cached.history.length; i < history.length; i++) {
+      if (!cached.game.playUsi(history[i])) {
+        cached = null;
+        throw new Error(`内部エラー: 棋譜を再現できません (${history[i]})`);
+      }
+      cached.history.push(history[i]);
     }
+    return cached.game;
+  }
+
+  /** ボットに渡す局面情報 */
+  function buildState(msg, receivedAt) {
+    const game = gameFor(msg.startSfen, msg.history);
     const pos = game.pos;
     const board = [];
     for (let r = 0; r < 9; r++) {
@@ -55,12 +68,13 @@ importScripts('../shogi-core.js');
       hands: { black: hand(Core.BLACK), white: hand(Core.WHITE) },
       inCheck: pos.inCheck(),
       timeLimitMs: msg.timeLimitMs,
-      deadline: Date.now() + msg.timeLimitMs,
+      deadline: receivedAt + msg.timeLimitMs,
       opponent: msg.opponent,
     };
   }
 
   self.onmessage = async (e) => {
+    const receivedAt = Date.now();
     const msg = e.data;
     try {
       if (msg.type === 'load') {
@@ -87,7 +101,7 @@ importScripts('../shogi-core.js');
         if (typeof bot.init === 'function') await bot.init({ color: msg.color, opponent: msg.opponent, timeLimitMs: msg.timeLimitMs });
         postMessage({ type: 'ready', id: msg.id });
       } else if (msg.type === 'move') {
-        const state = buildState(msg);
+        const state = buildState(msg, receivedAt);
         let mv = await bot.move(state);
         if (mv && typeof mv === 'object' && 'move' in mv) mv = mv.move;
         postMessage({ type: 'move', id: msg.id, move: typeof mv === 'string' ? mv.trim() : String(mv) });

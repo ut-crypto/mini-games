@@ -2,6 +2,7 @@
   "bots": [
     "claude-alphabeta.js",
     "claude-greedy.js",
+    "claude-honki.js",
     "random.js"
   ]
 }
